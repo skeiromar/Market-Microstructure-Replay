@@ -1,11 +1,37 @@
-# .gitignore (in project root or backend directory)
-/backend/data/
-*.db
-*.sqlite
-*.sqlite3
+.DS_Store
+.vscode/
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .env
+.env.*
+!.env.example
+!.env.test
+.venv/
 venv/
+backend/venv/
+
+# Python databases and caches
+*.db
+*.sqlite
+*.sqlite3
+backend/data/*.db
+backend/data/*.db-*
+
+# Frontend / Node
+frontend/node_modules/
+frontend/.svelte-kit/
+frontend/build/
+frontend/.output/
+frontend/.vercel/
+frontend/.netlify/
+frontend/.wrangler/
+frontend/vite.config.js.timestamp-*
+frontend/vite.config.ts.timestamp-*
+
+# Tooling
+coverage/
+npm-debug.log*
