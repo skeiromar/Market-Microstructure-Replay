@@ -22,7 +22,6 @@ except ImportError as e:
 def main():
     parser = argparse.ArgumentParser(description="Load market data from JSON files into SQLite DB.")
     parser.add_argument("mbp_file", help="Path to the MBP-10 JSON/JSONL file.")
-    parser.add_argument("trades_file", help="Path to the Trades JSON/JSONL file.")
     parser.add_argument("--clear", action="store_true", help="Clear existing data before loading (use with caution).")
 
     args = parser.parse_args()
@@ -30,9 +29,6 @@ def main():
     # --- Validate file paths ---
     if not os.path.exists(args.mbp_file):
         print(f"Error: MBP file not found at {args.mbp_file}")
-        sys.exit(1)
-    if not os.path.exists(args.trades_file):
-        print(f"Error: Trades file not found at {args.trades_file}")
         sys.exit(1)
 
     # --- Initialize DB ---
@@ -57,9 +53,6 @@ def main():
     # --- Load Data ---
     print("\n--- Loading MBP-10 Data ---")
     load_data_from_json(args.mbp_file, 'MBP10')
-
-    print("\n--- Loading Trades Data ---")
-    load_data_from_json(args.trades_file, 'TRADE')
 
     print("\nData loading process finished.")
 
