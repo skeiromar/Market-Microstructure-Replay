@@ -7,6 +7,38 @@ from .database import get_db_connection, DB_PATH # Import DB functions and path
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s replay_engine')
 
+async def _get_state_before_timestamp(db_path: str, target_timestamp_ns: int):
+    """
+    Queries the DB for the timestamp and sequence of the last event
+    occurring at or before the target timestamp.
+    Returns (last_ts, last_seq) or (0, -1) if no event found.
+    """
+    conn = None
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        # Find the latest event at or before the target time
+        cursor.execute("""
+            SELECT timestamp, sequence
+            FROM market_events
+            WHERE timestamp <= ?
+            ORDER BY timestamp DESC, sequence DESC
+            LIMIT 1
+        """, (target_timestamp_ns,))
+        row = cursor.fetchone()
+        if row:
+            logging.debug(f"Found state before {target_timestamp_ns}: ts={row['timestamp']}, seq={row['sequence']}")
+            return row['timestamp'], row['sequence']
+        else:
+            logging.debug(f"No state found before or at {target_timestamp_ns}, will start from beginning.")
+            return 0, -1 # Start from the very beginning if no prior event found
+    except Exception as e:
+        logging.error(f"Error getting state before timestamp {target_timestamp_ns}: {e}", exc_info=True)
+        return 0, -1 # Default to beginning on error
+    finally:
+        if conn:
+            conn.close()
+
 class AsyncReplayEngine:
     """
     Handles replaying market events from the SQLite database with time simulation.
@@ -55,7 +87,7 @@ class AsyncReplayEngine:
     async def _process_event(self, event):
         """Parses a single event and calls the appropriate callback."""
         try:
-            logging.info(f"Processing event type: {event.get('event_type')}, Timestamp: {event.get('timestamp')}")
+            logging.debug(f"Processing event type: {event.get('event_type')}, Timestamp: {event.get('timestamp')}")
             event_data = orjson.loads(event['data'])
             event_timestamp_ns = event['timestamp'] # Already an integer from DB
 
@@ -86,29 +118,25 @@ class AsyncReplayEngine:
                     }
                     # Await the callback (which should be broadcast_message)
                     await self.on_l2_update(l2_update_msg)
-
-            elif event['event_type'] == 'TRADE':
-                logging.info(f"Entered TRADE processing block for timestamp: {event_timestamp_ns}")
-
-                if self.on_trade:
-                    # Extract trade data
-                    trade_data = {
-                        "timestamp": event_timestamp_ns,
-                        "price": str(event_data.get('price', 'N/A')), # Ensure price is string
-                        "size": int(event_data.get('size', 0)),     # Ensure size is int
-                        "side": event_data.get('side', 'N'),        # Aggressor side
-                        "flags": event_data.get('flags'),
-                        "sequence": event_data.get('sequence')
-                        # Add other fields as needed by frontend
-                    }
-                    trade_msg = {
-                        "type": "new_trade",
-                        "data": trade_data
-                    }
-                    logging.info(f"Calling on_trade callback with message: {trade_msg}")
-
-                    # Await the callback
-                    await self.on_trade(trade_msg)
+            action = event_data.get('action')
+            if action == 'T' and self.on_trade:
+                # Extract trade data from TOP LEVEL of MBP10 record
+                trade_data = {
+                    "timestamp": event_timestamp_ns,
+                    # Use top-level price/size for the trade itself
+                    "price": str(event_data.get('price', 'N/A')),
+                    "size": int(event_data.get('size', 0)),
+                    "side": event_data.get('side', 'N'), # Aggressor side
+                    "flags": event_data.get('flags'),
+                    # Sequence is already available in 'event' dict if needed, but usually part of hd
+                    "sequence": event_data.get('sequence') # Sequence is at top level for MBP10 records
+                }
+                trade_msg = {
+                    "type": "new_trade",
+                    "data": trade_data
+                }
+                logging.debug(f"Extracted TRADE from MBP10: {trade_msg}") # Add log
+                await self.on_trade(trade_msg)
 
         except orjson.JSONDecodeError as e:
             logging.warning(f"Failed to parse event data JSON: {e}. Data: {event['data'][:100]}...")
@@ -241,6 +269,25 @@ class AsyncReplayEngine:
         else:
             logging.info(f"Setting replay speed to {speed_multiplier}x")
             self.speed = speed_multiplier
+
+    async def seek(self, target_timestamp_ns: int):
+        """
+        Seeks the replay to the specified timestamp.
+        Pauses playback and sets the internal state to resume just after
+        the last event occurring at or before the target time.
+        """
+        logging.info(f"Seek requested to timestamp: {target_timestamp_ns}")
+        self.pause() # Pause playback during seek
+
+        # Find the state immediately at or before the target timestamp
+        last_ts, last_seq = await _get_state_before_timestamp(self.db_path, target_timestamp_ns)
+
+        # Set the internal pointers for the next fetch
+        self.last_event_timestamp_ns = last_ts
+        self.last_event_sequence = last_seq
+        self.current_replay_time_ns = last_ts # Update current time display potentially
+
+        logging.info(f"Seek complete. Engine paused. Ready to play from ts={self.last_event_timestamp_ns}, seq={self.last_event_sequence}")
 
     def stop(self):
         """Requests the replay loop to stop gracefully."""
