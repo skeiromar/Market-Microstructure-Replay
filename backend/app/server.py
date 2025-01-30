@@ -100,6 +100,14 @@ async def handle_command(engine: AsyncReplayEngine, command_data, websocket): # 
         if isinstance(speed_value, (int, float)):
             logging.info(f"Received 'set_speed' command with value: {speed_value}")
             engine.set_speed(float(speed_value)) # Call engine method
+    elif command == "seek":
+        timestamp_ns = command_data.get("timestamp_ns")
+        # Basic validation for timestamp
+        if isinstance(timestamp_ns, int) and timestamp_ns >= 0:
+            logging.info(f"Received 'seek' command with timestamp_ns: {timestamp_ns}")
+            # Call the engine's seek method (make it async if it needs to be)
+            await engine.seek(timestamp_ns)
+
         else:
             logging.warning(f"Received 'set_speed' command with invalid value: {speed_value}")
     else:
