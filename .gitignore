@@ -1,0 +1,11 @@
+# .gitignore (in project root or backend directory)
+/backend/data/
+*.db
+*.sqlite
+*.sqlite3
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+venv/
