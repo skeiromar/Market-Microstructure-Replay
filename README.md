@@ -27,12 +27,12 @@ Market Microstructure Replay is a two-part replay workstation for inspecting lev
 
 ## Data Files
 
-The sample feed files now live in `backend/data/input/`:
+Place the source feed files retrieved from Databento in `backend/data/input/`:
 
 - `xnas-itch-20250325.mbp-10.json`
 - `xnas-itch-20250325.trades.json`
 
-These sample files were retrieved from Databento. They are the source file formats the product was built around. The current loader ingests the MBP-10 feed into SQLite, and the replay engine emits trade prints from trade actions embedded in that stream. The standalone trades file is kept beside it as the companion schema reference for the expected data format.
+These are the raw source file formats the product was built around. They are intentionally ignored from Git so the repository does not carry large market data artifacts. The current loader ingests the MBP-10 feed into SQLite, and the replay engine emits trade prints from trade actions embedded in that stream. The standalone trades file is kept beside it as the companion schema reference for the expected data format.
 
 ## How It Works
 
