@@ -32,7 +32,7 @@ The sample feed files now live in `backend/data/input/`:
 - `xnas-itch-20250325.mbp-10.json`
 - `xnas-itch-20250325.trades.json`
 
-These are the source file formats the product was built around. The current loader ingests the MBP-10 feed into SQLite, and the replay engine emits trade prints from trade actions embedded in that stream. The standalone trades file is kept beside it as the companion schema reference for the expected data format.
+These sample files were retrieved from Databento. They are the source file formats the product was built around. The current loader ingests the MBP-10 feed into SQLite, and the replay engine emits trade prints from trade actions embedded in that stream. The standalone trades file is kept beside it as the companion schema reference for the expected data format.
 
 ## How It Works
 
