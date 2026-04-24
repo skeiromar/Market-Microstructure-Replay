@@ -20,7 +20,6 @@ backend/venv/
 *.sqlite3
 backend/data/*.db
 backend/data/*.db-*
-backend/data/input/*.json
 
 # Frontend / Node
 frontend/node_modules/
